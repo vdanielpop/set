@@ -1,0 +1,10 @@
+#main {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.card {
+    flex-basis: 31%;
+    border-style: solid;
+    margin: 6px;
+}
