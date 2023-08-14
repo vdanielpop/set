@@ -1,4 +1,10 @@
-function generate (cards) {
+function generate () {
+  const colors = ['red', 'green', 'purple']
+  const amounts = [1, 2, 3]
+  const shapes = ['round', 'curve', 'diamond']
+  const fillings = ['empty', 'filled', 'striped']
+  const cards = []
+
   for (let color in colors) {
     for (let amount in amounts) {
       for (let shape in shapes) {
@@ -13,6 +19,8 @@ function generate (cards) {
       }
     }
   }
+
+  return cards
 }
 
 function randomize (cards) {
@@ -28,6 +36,7 @@ function randomize (cards) {
 function createCardElement (card) {
   let c = document.createElement('div')
   c.setAttribute('class', 'card')
+  c.style.backgroundColor = CSS_COLORS[card.color]
   Object.keys(card).map(key => {
     c.setAttribute('data-' + key, card[key])
     let el = document.createElement('p')
@@ -39,91 +48,120 @@ function createCardElement (card) {
 }
 
 function render (cards) {
-  let displayedCards = []
   let container = document.getElementById('main')
-  const l = cards.length - 1
-  for (let i = l; i > l - 12; i--) {
-    let cardElement = createCardElement(cards[i])
+  for (let card of cards) {
+    let cardElement = createCardElement(card)
     decorateCardWithCheckboxBehaviour(cardElement)
     container.appendChild(cardElement)
-    // TODO kinda unintuitive and hidden, maybe rewrite
-    displayedCards.push(cards.pop())
   }
+}
 
-  return displayedCards
+function initGameState (cards) {
+  window.gameState = {
+    remainingCards: cards,
+    selectedCardElements: [],
+    selectedAmount: 0,
+    score: 0
+  }
 }
 
 function decorateCardWithCheckboxBehaviour (cardElement) {
   let input = document.createElement('input')
   input.setAttribute('type', 'checkbox')
+  input.setAttribute('name', 'checkbox')
   cardElement.appendChild(input)
 
   input.addEventListener('click', (event) => {
     if (true === event.target.checked) {
       //TODO Figure out if we need to recreate the card object here
       // or if we need to save the displayed cards in state somewhere
-      window.gameState.selectedCards.push(event.target)
+      window.gameState.selectedCardElements.push(event.target.parentElement)
       window.gameState.selectedAmount++
     } else {
       const newList = []
-      for (let element of window.gameState.selectedCards) {
+      for (let element of window.gameState.selectedCardElements) {
         if (element !== event.target) {
           newList.push(element)
         }
       }
-      window.gameState.selectedCards = newList
+      window.gameState.selectedCardElements = newList
       window.gameState.selectedAmount--
     }
 
     if (window.gameState.selectedAmount === 3) {
       if (areSelectedCardsASet()) {
         incrementScore()
-        replaceSelectedCards()
-        resetState()
-
-        // TODO Not sure about this, gotta read more about the event system
-        event.preventDefault()
-        event.stopImmediatePropagation()
+        removeSelectedCards()
+      } else {
+        //TODO Maybe play some sort of a sound?
+        uncheckSelectedCards()
       }
+      resetSelectionState()
     }
   })
 }
 
 function areSelectedCardsASet () {
   const attributes = ['color', 'amount', 'shape', 'filling']
-  const gameIsSet = false
   for (let attribute of attributes) {
     const valueSet = new Set()
-    window.gameState.selectedCards.map(card => {
-      valueSet.add(card.parentElement.getAttribute('data-' + attribute))
+    window.gameState.selectedCardElements.map(card => {
+      valueSet.add(card.getAttribute('data-' + attribute))
     })
 
     if (valueSet.size === 2) {
-      console.log('NOT SET')
       return false
     }
   }
 
-  console.log('IT IS A SET')
   return true
 }
 
-const colors = ['red', 'green', 'purple']
-const amounts = [1, 2, 3]
-const shapes = ['round', 'curve', 'diamond']
-const fillings = ['empty', 'filled', 'striped']
-window.gameState = {
-  selectedCards: [],
-  selectedAmount: 0
+function uncheckSelectedCards () {
+  for (let el of window.gameState.selectedCardElements) {
+    let checkbox = el.children.namedItem('checkbox')
+    checkbox.checked = false
+  }
 }
 
-cards = []
+function incrementScore () {
+  window.gameState.score++
+  document.getElementById('score').value = window.gameState.score
+}
 
-generate(cards)
+function removeSelectedCards () {
+  for (let el of window.gameState.selectedCardElements) {
+    el.remove()
+  }
+}
+
+function addMoreCards () {
+  const cards = []
+  for (let i = 0; i < 3; i++) {
+    cards.push(window.gameState.remainingCards.pop())
+  }
+
+  render(cards)
+}
+
+function resetSelectionState () {
+  window.gameState.selectedCardElements = []
+  window.gameState.selectedAmount = 0
+}
+
+/**-----------------------*/
+const CSS_COLORS = {
+  'red': '#b63e36',
+  'green': '#a9d0ac',
+  'purple': '#c2bfe3'
+}
+const cards = generate()
 randomize(cards)
-displayedCards = render(cards)
-// adauga contor
-// cand dai check la 3, scoate elementele, mareste contorul, adauga inca 3
-// adauga buton, cand apesi buton adauga inca 3, si scoate din lista
-// IMAGINI
-
+const cardsToDisplay = []
+for (let i = 0; i < 12; i++) {
+  cardsToDisplay.push(cards.pop())
+}
+render(cardsToDisplay)
+initGameState(cards)
+document.getElementById('add-more').addEventListener('click', (event => {addMoreCards()}))
+// TODO TIME TO CSS BABYYYY
