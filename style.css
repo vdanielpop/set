@@ -3,8 +3,18 @@
     flex-wrap: wrap;
 }
 
-.card {
-    flex-basis: 31%;
+.svg-card {
+    flex-basis: 22%;
     border-style: solid;
-    margin: 6px;
+    margin: 5px;
 }
+
+.selected {
+    border-style: dashed;
+    border-color: white;
+    background-color: lightgrey;
+}
+
+/** TODO USE CSS GRID INSTEAD OF FLEXBOX IF YOU WANT A FIXED NUMBER OF ROWS
+    Refer to https://stackoverflow.com/questions/72447053/does-anyone-know-how-i-can-set-a-limit-to-the-rows-that-flexbox-can-wrap
+ */
