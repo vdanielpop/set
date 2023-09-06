@@ -18,3 +18,23 @@
 /** TODO USE CSS GRID INSTEAD OF FLEXBOX IF YOU WANT A FIXED NUMBER OF ROWS
     Refer to https://stackoverflow.com/questions/72447053/does-anyone-know-how-i-can-set-a-limit-to-the-rows-that-flexbox-can-wrap
  */
+
+
+@media screen and (min-width: 1025px) {
+    body {
+        overflow-y: hidden;
+    }
+
+    #main {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: auto auto auto;
+        height: 100vh;
+        width: 80vw;
+    }
+
+    .svg-card {
+        max-height: 28vh;
+        max-width: 9vw;
+    }
+}

@@ -120,7 +120,7 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
     } else {
       const newList = []
       for (let element of window.gameState.selectedCardElements) {
-        if (element !== event.target) {
+        if (element !== event.target.parentElement) {
           newList.push(element)
         }
       }
