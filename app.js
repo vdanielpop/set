@@ -1,3 +1,33 @@
+class Card {
+  color
+  amount
+  filling
+  shape
+
+  constructor (color, amount, filling, shape) {
+    this.color = color
+    this.amount = amount
+    this.filling = filling
+    this.shape = shape
+  }
+
+  equals (c) {
+    return c.color === this.color && c.amount === this.amount && c.filling === this.filling && c.shape === this.shape
+  }
+
+  static fromElementWithDataAttributes (el) {
+    return new Card(
+      el.getAttribute('data-color'),
+      el.getAttribute('data-amount'),
+      el.getAttribute('data-filling'),
+      el.getAttribute('data-shape'),
+    )
+  }
+}
+
+//TODO Move the class in a separate file.
+/**************************************************************/
+
 function generate () {
   const colors = ['red', 'green', 'purple']
   const amounts = [1, 2, 3]
@@ -9,12 +39,12 @@ function generate () {
     for (let amount in amounts) {
       for (let shape in shapes) {
         for (let filling in fillings) {
-          cards.push({
-            'color': colors[color],
-            'amount': amounts[amount],
-            'shape': shapes[shape],
-            'filling': fillings[filling],
-          })
+          cards.push(new Card(
+            colors[color],
+            amounts[amount],
+            fillings[filling],
+            shapes[shape],
+          ))
         }
       }
     }
@@ -78,12 +108,13 @@ function render (cards) {
   }
 }
 
-function initGameState (cards) {
+function initGameState (displayedCards, cards) {
   window.gameState = {
     remainingCards: cards,
+    displayedCards: displayedCards,
+    selectedCards: [],
     selectedCardElements: [],
-    selectedAmount: 0,
-    score: 0
+    score: 0,
   }
 }
 
@@ -112,23 +143,18 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   input.setAttribute('style', 'display: none')
   input.addEventListener('click', (event) => {
     event.target.parentElement.classList.toggle('selected')
+    const selectedCard = Card.fromElementWithDataAttributes(event.target.parentElement)
     if (true === event.target.checked) {
-      //TODO Figure out if we need to recreate the card object here
-      // or if we need to save the displayed cards in state somewhere
+      window.gameState.selectedCards.push(selectedCard)
       window.gameState.selectedCardElements.push(event.target.parentElement)
-      window.gameState.selectedAmount++
     } else {
-      const newList = []
-      for (let element of window.gameState.selectedCardElements) {
-        if (element !== event.target.parentElement) {
-          newList.push(element)
-        }
-      }
-      window.gameState.selectedCardElements = newList
-      window.gameState.selectedAmount--
+      window.gameState.selectedCardElements =
+        window.gameState.selectedCardElements.filter(el => el !== event.target.parentElement)
+      window.gameState.selectedCards =
+        window.gameState.selectedCards.filter(card => !card.equals(selectedCard))
     }
 
-    if (window.gameState.selectedAmount === 3) {
+    if (window.gameState.selectedCards.length === 3) {
       if (areSelectedCardsASet()) {
         incrementScore()
         removeSelectedCards()
@@ -145,13 +171,9 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
 }
 
 function areSelectedCardsASet () {
-  const attributes = ['color', 'amount', 'shape', 'filling']
-  for (let attribute of attributes) {
+  for (const attribute of CARD_ATTRIBUTES) {
     const valueSet = new Set()
-    window.gameState.selectedCardElements.map(card => {
-      valueSet.add(card.getAttribute('data-' + attribute))
-    })
-
+    window.gameState.selectedCards.map(card => valueSet.add(card[attribute]))
     if (valueSet.size === 2) {
       return false
     }
@@ -161,7 +183,7 @@ function areSelectedCardsASet () {
 }
 
 function uncheckSelectedCards () {
-  for (let el of window.gameState.selectedCardElements) {
+  for (const el of window.gameState.selectedCardElements) {
     let checkbox = el.children.namedItem('checkbox')
     checkbox.checked = false
     checkbox.parentElement.classList.toggle('selected')
@@ -174,7 +196,7 @@ function incrementScore () {
 }
 
 function removeSelectedCards () {
-  for (let el of window.gameState.selectedCardElements) {
+  for (const el of window.gameState.selectedCardElements) {
     el.remove()
   }
 }
@@ -182,7 +204,9 @@ function removeSelectedCards () {
 function addMoreCards () {
   const cards = []
   for (let i = 0; i < 3; i++) {
-    cards.push(window.gameState.remainingCards.pop())
+    const card = window.gameState.remainingCards.pop()
+    window.gameState.displayedCards.push(card)
+    cards.push(card)
   }
 
   render(cards)
@@ -190,15 +214,21 @@ function addMoreCards () {
 
 function resetSelectionState () {
   window.gameState.selectedCardElements = []
-  window.gameState.selectedAmount = 0
+  window.gameState.selectedCards = []
 }
 
 /**-----------------------*/
 const CSS_COLORS = {
   'red': '#b63e36',
   'green': '#a9d0ac',
-  'purple': '#c2bfe3'
+  'purple': '#c2bfe3',
 }
+const CARD_ATTRIBUTES = [
+  'color',
+  'amount',
+  'shape',
+  'filling',
+]
 const cards = generate()
 randomize(cards)
 const cardsToDisplay = []
@@ -206,5 +236,5 @@ for (let i = 0; i < 12; i++) {
   cardsToDisplay.push(cards.pop())
 }
 render(cardsToDisplay)
-initGameState(cards)
+initGameState(cardsToDisplay, cards)
 document.getElementById('add-more').addEventListener('click', (event => {addMoreCards()}))
