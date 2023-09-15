@@ -9,8 +9,11 @@
 <div id="controls">
     <label for="score">Score: </label>
     <input id="score" type="text" disabled class="score" value="0"/>
+    <label for="existing-sets">No. of existing sets: </label>
+    <input id="existing-sets" type="number" disabled class="existing-sets" value="0">
     <input id="add-more" type="button" value="Add more!"/>
     <input id="reset" type="button" value="Reset"/>
+    <input id="show-sets" type="button" value="Show existing sets (in console)"/>
 </div>
 
 <?xml version="1.0" encoding="utf-8"?>
@@ -96,7 +99,7 @@
 
 <div id="main"></div>
 
-<script src="app.js"></script>
+<script src="app.js" type="module"></script>
 </body>
 </html>
 

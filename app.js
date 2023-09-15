@@ -1,20 +1,17 @@
+import Card from './src/card.js'
+import { CARD_COLORS, CARD_SHAPES, CARD_AMOUNTS, CARD_FILLINGS, CARD_ATTRIBUTES } from './src/constants.js'
+
+/**
+ * @returns {Card[]}
+ */
 function generate () {
-  const colors = ['red', 'green', 'purple']
-  const amounts = [1, 2, 3]
-  const shapes = ['round', 'curve', 'diamond']
-  const fillings = ['empty', 'filled', 'striped']
   const cards = []
 
-  for (let color in colors) {
-    for (let amount in amounts) {
-      for (let shape in shapes) {
-        for (let filling in fillings) {
-          cards.push({
-            'color': colors[color],
-            'amount': amounts[amount],
-            'shape': shapes[shape],
-            'filling': fillings[filling],
-          })
+  for (const color in CARD_COLORS) {
+    for (const amount in CARD_AMOUNTS) {
+      for (const shape in CARD_SHAPES) {
+        for (const filling in CARD_FILLINGS) {
+          cards.push(new Card(color, amount, filling, shape))
         }
       }
     }
@@ -23,6 +20,9 @@ function generate () {
   return cards
 }
 
+/**
+ * @param cards {Card[]}
+ */
 function randomize (cards) {
   for (let i = cards.length - 1; i >= 0; i--) {
     let index1 = Math.floor(Math.random() * cards.length)
@@ -33,6 +33,10 @@ function randomize (cards) {
   }
 }
 
+/**
+ * @param card {Card}
+ * @returns {SVGSVGElement}
+ */
 function createCardSvg (card) {
   const svgShapeAmountSelectors = {
     'diamond_1': '#a1',
@@ -69,6 +73,9 @@ function createCardSvg (card) {
   return svg
 }
 
+/**
+ * @param cards {Card[]}
+ */
 function render (cards) {
   let container = document.getElementById('main')
   for (let card of cards) {
@@ -78,25 +85,31 @@ function render (cards) {
   }
 }
 
-function initGameState (cards) {
+function initGameState (displayedCards, cards) {
   window.gameState = {
     remainingCards: cards,
+    displayedCards: displayedCards,
+    selectedCards: [],
     selectedCardElements: [],
-    selectedAmount: 0,
-    score: 0
+    score: 0,
   }
 }
 
+/**
+ * @param cardSvg {SVGSVGElement}
+ * @param card {Card}
+ * @returns {HTMLDivElement}
+ */
 function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   // TODO Needed a unique id for the checkbox so this was the first thing that came to mind.
   //  Find a better way to do that in the future.
-  const cid = card.color + card.amount + card.shape + card.filling
+  const cid = card.toString()
 
   let div = document.createElement('div')
   div.setAttribute('class', 'svg-card')
   // TODO Currently these data-attributes are used for validation, which is kinda ugly.
   //  In the future store the selected cards in the state and adjust the validation.
-  Object.keys(card).map(key => {
+  CARD_ATTRIBUTES.map(key => {
     div.setAttribute('data-' + key, card[key])
   })
 
@@ -112,26 +125,31 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   input.setAttribute('style', 'display: none')
   input.addEventListener('click', (event) => {
     event.target.parentElement.classList.toggle('selected')
+    const selectedCard = Card.fromDivWithDataAttributes(event.target.parentElement)
     if (true === event.target.checked) {
-      //TODO Figure out if we need to recreate the card object here
-      // or if we need to save the displayed cards in state somewhere
+      window.gameState.selectedCards.push(selectedCard)
       window.gameState.selectedCardElements.push(event.target.parentElement)
-      window.gameState.selectedAmount++
     } else {
-      const newList = []
-      for (let element of window.gameState.selectedCardElements) {
-        if (element !== event.target.parentElement) {
-          newList.push(element)
-        }
-      }
-      window.gameState.selectedCardElements = newList
-      window.gameState.selectedAmount--
+      window.gameState.selectedCardElements =
+        window.gameState.selectedCardElements.filter(el => el !== event.target.parentElement)
+      window.gameState.selectedCards =
+        window.gameState.selectedCards.filter(card => !card.equals(selectedCard))
     }
 
-    if (window.gameState.selectedAmount === 3) {
+    if (window.gameState.selectedCards.length === 3) {
       if (areSelectedCardsASet()) {
         incrementScore()
         removeSelectedCards()
+
+        // updates displayed cards
+        const newDisplayedCards = []
+        for (card of window.gameState.displayedCards) {
+          if (undefined === window.gameState.selectedCards.find(x => x.equals(card))) {
+            newDisplayedCards.push(card)
+          }
+        }
+        window.gameState.displayedCards = newDisplayedCards
+        document.getElementById('existing-sets').value = getSetsFromCards(window.gameState.displayedCards).length
       } else {
         //TODO Maybe play some sort of a sound?
         uncheckSelectedCards()
@@ -144,14 +162,62 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   return div
 }
 
-function areSelectedCardsASet () {
-  const attributes = ['color', 'amount', 'shape', 'filling']
-  for (let attribute of attributes) {
-    const valueSet = new Set()
-    window.gameState.selectedCardElements.map(card => {
-      valueSet.add(card.getAttribute('data-' + attribute))
-    })
+/**
+ *
+ * @param cards {Card[]}
+ * @return {[Card, Card, Card][]}
+ */
+function getSetsFromCards (cards) {
+  const n = cards.length
+  const hashMap = []
+  cards.forEach((card, index) => hashMap[card.toString()] = index)
 
+  const setsMap = {}
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const complement = findSetComplement(cards[i], cards[j])
+      if (undefined !== hashMap[complement.toString()]) {
+        const t = [cards[i], cards[j], complement]
+        const key = t.map(x => hashMap[x]).sort().reduce((prev, x) => prev + '-' + Number(x).toString(), '')
+        setsMap[key] = t
+      }
+    }
+  }
+
+  return Object.values(setsMap)
+}
+
+/**
+ *
+ * @param card1 {Card}
+ * @param card2 {Card}
+ * @return {Card}
+ */
+function findSetComplement (card1, card2) {
+  /**
+   * @template A
+   * @param v1 {A}
+   * @param v2 {A}
+   * @param values {A[]}
+   * @return {A}
+   */
+  const getSameOrThird = (v1, v2, values) =>
+    v1 === v2 ?
+      v1 :
+      values.filter(x => x !== v1 && x !== v2).pop()
+
+  return new Card(
+    getSameOrThird(card1.color, card2.color, Object.values(CARD_COLORS)),
+    getSameOrThird(card1.amount, card2.amount, Object.values(CARD_AMOUNTS)),
+    getSameOrThird(card1.filling, card2.filling, Object.values(CARD_FILLINGS)),
+    getSameOrThird(card1.shape, card2.shape, Object.values(CARD_SHAPES)),
+  )
+}
+
+function areSelectedCardsASet () {
+  for (const attribute of CARD_ATTRIBUTES) {
+    const valueSet = new Set()
+    window.gameState.selectedCards.map(card => valueSet.add(card[attribute]))
     if (valueSet.size === 2) {
       return false
     }
@@ -161,7 +227,7 @@ function areSelectedCardsASet () {
 }
 
 function uncheckSelectedCards () {
-  for (let el of window.gameState.selectedCardElements) {
+  for (const el of window.gameState.selectedCardElements) {
     let checkbox = el.children.namedItem('checkbox')
     checkbox.checked = false
     checkbox.parentElement.classList.toggle('selected')
@@ -174,7 +240,7 @@ function incrementScore () {
 }
 
 function removeSelectedCards () {
-  for (let el of window.gameState.selectedCardElements) {
+  for (const el of window.gameState.selectedCardElements) {
     el.remove()
   }
 }
@@ -182,29 +248,31 @@ function removeSelectedCards () {
 function addMoreCards () {
   const cards = []
   for (let i = 0; i < 3; i++) {
-    cards.push(window.gameState.remainingCards.pop())
+    const card = window.gameState.remainingCards.pop()
+    window.gameState.displayedCards.push(card)
+    cards.push(card)
   }
 
   render(cards)
+  document.getElementById('existing-sets').value = getSetsFromCards(window.gameState.displayedCards).length
 }
 
 function resetSelectionState () {
   window.gameState.selectedCardElements = []
-  window.gameState.selectedAmount = 0
+  window.gameState.selectedCards = []
 }
 
 /**-----------------------*/
-const CSS_COLORS = {
-  'red': '#b63e36',
-  'green': '#a9d0ac',
-  'purple': '#c2bfe3'
-}
 const cards = generate()
 randomize(cards)
 const cardsToDisplay = []
 for (let i = 0; i < 12; i++) {
   cardsToDisplay.push(cards.pop())
 }
+initGameState(cardsToDisplay, cards)
+document.getElementById('existing-sets').value = getSetsFromCards(cardsToDisplay).length
 render(cardsToDisplay)
-initGameState(cards)
 document.getElementById('add-more').addEventListener('click', (event => {addMoreCards()}))
+document.getElementById('show-sets').
+  addEventListener('click',
+    (e => console.log(getSetsFromCards(window.gameState.displayedCards).map(x => x.toString()))))
