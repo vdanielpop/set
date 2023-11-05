@@ -62,6 +62,7 @@ function createCardSvg (card) {
   }
   let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   svg.setAttribute('viewBox', '0 0 40 58')
+  svg.classList.add('svg-card')
   let g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
   g.setAttribute('transform', 'translate(20,29)')
   let use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
@@ -106,7 +107,7 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   const cid = card.toString()
 
   let div = document.createElement('div')
-  div.setAttribute('class', 'svg-card')
+  div.setAttribute('class', 'svg-wrapper')
   // TODO Currently these data-attributes are used for validation, which is kinda ugly.
   //  In the future store the selected cards in the state and adjust the validation.
   CARD_ATTRIBUTES.map(key => {
@@ -124,7 +125,9 @@ function wrapAndDecorateCardWithCheckboxBehaviour (cardSvg, card) {
   input.setAttribute('id', 'cx-' + cid)
   input.setAttribute('style', 'display: none')
   input.addEventListener('click', (event) => {
-    event.target.parentElement.classList.toggle('selected')
+    const svg = event.target.previousSibling.childNodes[0]
+    svg.classList.toggle('selected')
+
     const selectedCard = Card.fromDivWithDataAttributes(event.target.parentElement)
     if (true === event.target.checked) {
       window.gameState.selectedCards.push(selectedCard)
@@ -228,9 +231,10 @@ function areSelectedCardsASet () {
 
 function uncheckSelectedCards () {
   for (const el of window.gameState.selectedCardElements) {
-    let checkbox = el.children.namedItem('checkbox')
+    const checkbox = el.children.namedItem('checkbox')
     checkbox.checked = false
-    checkbox.parentElement.classList.toggle('selected')
+    const svg = el.childNodes[0].childNodes[0]
+    svg.classList.toggle('selected')
   }
 }
 
@@ -246,6 +250,10 @@ function removeSelectedCards () {
 }
 
 function addMoreCards () {
+  if (window.gameState.remainingCards.length === 0) {
+    return
+  }
+
   const cards = []
   for (let i = 0; i < 3; i++) {
     const card = window.gameState.remainingCards.pop()
@@ -273,6 +281,5 @@ initGameState(cardsToDisplay, cards)
 document.getElementById('existing-sets').value = getSetsFromCards(cardsToDisplay).length
 render(cardsToDisplay)
 document.getElementById('add-more').addEventListener('click', (event => {addMoreCards()}))
-document.getElementById('show-sets').
-  addEventListener('click',
-    (e => console.log(getSetsFromCards(window.gameState.displayedCards).map(x => x.toString()))))
+document.getElementById('show-sets').addEventListener('click',
+  (e => console.log(getSetsFromCards(window.gameState.displayedCards).map(x => x.toString()))))

@@ -7,8 +7,11 @@ html {
     flex-wrap: wrap;
 }
 
+.svg-wrapper {
+    flex-basis: 25%;
+}
+
 .svg-card {
-    flex-basis: 22%;
     border-style: solid;
     margin: 5px;
 }
